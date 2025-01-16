@@ -1,12 +1,85 @@
 document.addEventListener('DOMContentLoaded', () => {
     const shakeButton = document.getElementById('shakeButton');
     const resultContainer = document.getElementById('result');
+    const tube = document.querySelector('.tube');
     const hexagramNameElement = document.getElementById('hexagramName');
     const lineNumberElement = document.getElementById('lineNumber');
     const lineTextElement = document.getElementById('lineText');
-    const tube = document.querySelector('.tube');
 
-    // 静态卦象数据
+    // 显示卦象的函数
+    function displayHexagram() {
+        // 添加摇动动画
+        tube.classList.add('shaking');
+        shakeButton.disabled = true;
+
+        // 随机选择卦象和爻
+        const randomIndex = Math.floor(Math.random() * hexagramData.length);
+        const selectedHexagram = hexagramData[randomIndex];
+
+        // 1秒后显示结果
+        setTimeout(() => {
+            tube.classList.remove('shaking');
+            shakeButton.disabled = false;
+
+            hexagramNameElement.textContent = selectedHexagram.hexagram;
+            lineNumberElement.textContent = selectedHexagram.position;
+            lineTextElement.textContent = selectedHexagram.content;
+
+            resultContainer.style.display = 'block';
+            resultContainer.style.animation = 'fadeIn 1s';
+        }, 1000);
+    }
+
+    // 点击按钮事件
+    shakeButton.addEventListener('click', displayHexagram);
+
+    // 检测设备是否支持摇动检测
+    if (window.DeviceMotionEvent) {
+        let lastUpdate = 0;
+        let lastX = 0, lastY = 0, lastZ = 0;
+        const threshold = 15; // 摇动灵敏度阈值
+
+        // 处理设备摇动
+        window.addEventListener('devicemotion', (event) => {
+            const currentTime = new Date().getTime();
+            const diffTime = currentTime - lastUpdate;
+
+            if (diffTime > 100) { // 限制检查频率
+                const acceleration = event.accelerationIncludingGravity;
+                if (!acceleration) return;
+
+                const deltaX = Math.abs(acceleration.x - lastX);
+                const deltaY = Math.abs(acceleration.y - lastY);
+                const deltaZ = Math.abs(acceleration.z - lastZ);
+
+                if (deltaX > threshold || deltaY > threshold || deltaZ > threshold) {
+                    if (!shakeButton.disabled) { // 防止动画还在进行时触发
+                        displayHexagram();
+                    }
+                }
+
+                lastX = acceleration.x;
+                lastY = acceleration.y;
+                lastZ = acceleration.z;
+                lastUpdate = currentTime;
+            }
+        });
+
+        // 请求设备运动权限（iOS 13+需要）
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            document.body.addEventListener('click', () => {
+                DeviceMotionEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            console.log('设备运动权限已获取');
+                        }
+                    })
+                    .catch(console.error);
+            }, { once: true });
+        }
+    }
+
+    // 卦象数据数组
     const hexagramData = [
         // 乾卦
         { hexagram: "乾卦", position: "初九", content: "潜龙勿用" },
@@ -520,68 +593,4 @@ document.addEventListener('DOMContentLoaded', () => {
         { hexagram: "未济卦", position: "六五", content: "贞吉，无悔，君子之光，有孚，吉" },
         { hexagram: "未济卦", position: "上九", content: "有孚于饮酒，无咎，濡其首，有孚失是" }
     ];
-
-    // 显示卦象的函数
-    function displayHexagram() {
-        const randomIndex = Math.floor(Math.random() * hexagramData.length);
-        const selectedHexagram = hexagramData[randomIndex];
-        
-        resultContainer.innerHTML = `
-            <div class="hexagram-result">
-                <h3>${selectedHexagram.hexagram}</h3>
-                <p class="position">${selectedHexagram.position}</p>
-                <p class="content">${selectedHexagram.content}</p>
-            </div>
-        `;
-        
-        // 添加动画效果
-        resultContainer.style.animation = 'none';
-        resultContainer.offsetHeight; // 触发重绘
-        resultContainer.style.animation = 'fadeIn 1s';
-    }
-
-    // 点击按钮事件
-    shakeButton.addEventListener('click', displayHexagram);
-
-    // 检测设备是否支持摇动检测
-    if (window.DeviceMotionEvent) {
-        let lastUpdate = 0;
-        let lastX = 0, lastY = 0, lastZ = 0;
-        const threshold = 15; // 摇动灵敏度阈值
-
-        // 处理设备摇动
-        window.addEventListener('devicemotion', (event) => {
-            const current = event.acceleration;
-            const currentTime = new Date().getTime();
-            const diffTime = currentTime - lastUpdate;
-
-            if (diffTime > 100) { // 限制检查频率
-                const deltaX = Math.abs(current.x - lastX);
-                const deltaY = Math.abs(current.y - lastY);
-                const deltaZ = Math.abs(current.z - lastZ);
-
-                if (deltaX > threshold || deltaY > threshold || deltaZ > threshold) {
-                    displayHexagram();
-                }
-
-                lastX = current.x;
-                lastY = current.y;
-                lastZ = current.z;
-                lastUpdate = currentTime;
-            }
-        });
-
-        // 请求设备运动权限（iOS 13+需要）
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            document.body.addEventListener('click', () => {
-                DeviceMotionEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            console.log('设备运动权限已获取');
-                        }
-                    })
-                    .catch(console.error);
-            }, { once: true });
-        }
-    }
 });
